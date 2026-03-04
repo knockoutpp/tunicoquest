@@ -1,87 +1,66 @@
 import streamlit as st
+from streamlit_javascript import st_javascript
 import json
-import os
 
-# Configurações de Estilo "Gamer Moderno"
-st.set_page_config(page_title="Tunico Quest Online", layout="wide")
+# Configuração Gamer
+st.set_page_config(page_title="Tunico Quest 2.0", layout="wide")
 
 st.markdown("""
     <style>
     .main { background-color: #0c0e23; color: white; }
     .stProgress > div > div > div > div { background-image: linear-gradient(to right, #00ffcc, #ff00ff); }
-    .card { 
-        background-color: #1c203c; 
-        padding: 15px; 
-        border-radius: 15px; 
-        border: 1px solid #00ffff;
-        margin-bottom: 10px;
-    }
-    .metric-box {
-        text-align: center;
-        background: rgba(0, 255, 204, 0.1);
-        padding: 20px;
-        border-radius: 20px;
-        border: 2px solid #00ffcc;
-    }
+    .card { background-color: #1c203c; padding: 15px; border-radius: 15px; border: 1px solid #00ffff; margin-bottom: 10px; text-align: center; }
     </style>
     """, unsafe_allow_html=True)
 
-# Dados baseados na sua planilha
-TAREFAS = [
-    "📚 Dever de Casa", "🎓 Atenção na Aula",
-    "🛡️ Comportamento", "🔇 Sem Palavrões",
-    "🏠 Ajudar em Casa", "😴 Dormir no Horário"
-]
+# --- SISTEMA DE MEMÓRIA (Local Storage) ---
+def salvar_no_navegador(dados):
+    js_code = f"localStorage.setItem('tunico_data', '{json.dumps(dados)}');"
+    st_javascript(js_code)
+
+def carregar_do_navegador():
+    js_code = "localStorage.getItem('tunico_data');"
+    result = st_javascript(js_code)
+    if result:
+        return json.loads(result)
+    return None
+
+# Inicialização das Tarefas
+TAREFAS = ["📚 Dever de Casa", "🎓 Atenção na Aula", "🛡️ Comportamento", "🔇 Sem Palavrões", "🏠 Ajudar em Casa", "😴 Dormir no Horário"]
 DIAS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
-PONTOS_CICLO = [0, 1, 2, 5, -1, -2] # Ordem: Neutro -> Cumprida -> Excelente -> Perfeito -> Mau -> Palavrão
+VALORES = [0, 1, 2, 5, -1, -2]
 
+# Carregar dados
+dados_salvos = carregar_do_navegador()
 if 'dados' not in st.session_state:
-    st.session_state.dados = {t: [0]*7 for t in TAREFAS}
+    st.session_state.dados = dados_salvos if dados_salvos else {t: [0]*7 for t in TAREFAS}
 
-# Cálculo de Pontos
+# --- INTERFACE ---
 total_xp = sum(sum(v) for v in st.session_state.dados.values())
-meta = 100 # Meta para o Videogame
+meta = 100
 
-# --- TOPO DA DASHBOARD ---
-st.title("🕹️ TUNICO QUEST: LEVEL UP")
+st.title("🕹️ TUNICO QUEST: CLOUD SAVE")
 
-col_avatar, col_progresso, col_meta = st.columns([1, 2, 1])
+col_avatar, col_prog = st.columns([1, 3])
 
 with col_avatar:
-    # Boneco que muda de acordo com o XP
-    if total_xp >= meta:
-        st.markdown("<h1 style='font-size: 80px; text-align: center;'>👑</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center;'><b>LENDÁRIO!</b></p>", unsafe_allow_html=True)
-    elif total_xp >= 20:
-        st.markdown("<h1 style='font-size: 80px; text-align: center;'>😎</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center;'><b>GUERREIRO</b></p>", unsafe_allow_html=True)
-    elif total_xp >= 0:
-        st.markdown("<h1 style='font-size: 80px; text-align: center;'>👦</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center;'><b>INICIANTE</b></p>", unsafe_allow_html=True)
-    else:
-        st.markdown("<h1 style='font-size: 80px; text-align: center;'>👾</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center;'><b>VILÃO (CUIDADO!)</b></p>", unsafe_allow_html=True)
+    # Boneco Interativo que muda com o XP
+    emoji = "👦" if total_xp >= 0 else "👾"
+    if total_xp >= meta: emoji = "👑"
+    st.markdown(f"<h1 style='font-size: 100px; text-align: center;'>{emoji}</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='text-align: center;'>XP: {total_xp}</h3>", unsafe_allow_html=True)
 
-with col_progresso:
-    st.write(f"### Objetivo: Vídeo Game 🎮")
+with col_prog:
+    st.write(f"### Missão: Conquistar o Vídeo Game 🎮")
     prog = min(max(total_xp/meta, 0.0), 1.0)
     st.progress(prog)
-    st.write(f"Faltam **{meta - total_xp} XP** para o prêmio!")
-
-with col_meta:
-    st.markdown(f"""
-        <div class='metric-box'>
-            <p style='margin:0;'>XP ATUAL</p>
-            <h1 style='margin:0; color:#00ffcc;'>{total_xp}</h1>
-        </div>
-    """, unsafe_allow_html=True)
+    st.write(f"Faltam **{meta - total_xp} XP** para o prémio!")
 
 st.divider()
 
-# --- GRID INTERATIVA ---
-st.subheader("📅 Missões da Semana")
+# Grid de Jogo
 cols_h = st.columns([2] + [1]*7)
-for i, d in enumerate(["Missão"] + DIAS):
+for i, d in enumerate(["MISSÃO"] + DIAS):
     cols_h[i].write(f"**{d}**")
 
 for tarefa in TAREFAS:
@@ -89,27 +68,15 @@ for tarefa in TAREFAS:
     cols[0].markdown(f"<div class='card'>{tarefa}</div>", unsafe_allow_html=True)
     
     for i in range(7):
-        valor = st.session_state.dados[tarefa][i]
-        # Cor do botão muda se for positivo ou negativo
-        tipo = "primary" if valor > 0 else "secondary"
-        
-        if cols[i+1].button(f"{valor}", key=f"{tarefa}_{i}", help="Clique para mudar o ponto"):
-            # Ciclo de pontos ao clicar
-            idx_atual = PONTOS_CICLO.index(valor)
-            novo_valor = PONTOS_CICLO[(idx_atual + 1) % len(PONTOS_CICLO)]
-            st.session_state.dados[tarefa][i] = novo_valor
+        val = st.session_state.dados[tarefa][i]
+        if cols[i+1].button(f"{val}", key=f"{tarefa}_{i}"):
+            # Ciclo de pontos
+            idx = VALORES.index(val)
+            st.session_state.dados[tarefa][i] = VALORES[(idx + 1) % len(VALORES)]
+            salvar_no_navegador(st.session_state.dados)
             st.rerun()
 
-if st.sidebar.button("🗑️ Reiniciar Tudo"):
+if st.sidebar.button("🗑️ REINICIAR TUDO"):
     st.session_state.dados = {t: [0]*7 for t in TAREFAS}
+    salvar_no_navegador(st.session_state.dados)
     st.rerun()
-
-st.sidebar.info("""
-**Legenda de Cliques:**
-- 0: Neutro
-- 1: Cumprida
-- 2: Excelente
-- 5: Dia Perfeito!
-- -1: Mau comportamento
-- -2: Palavrão
-""")
